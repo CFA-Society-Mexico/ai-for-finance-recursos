@@ -9,6 +9,7 @@ Repositorio de recursos sobre IA aplicada a finanzas para los miembros del grupo
 | Carpeta | Qué encontrarás |
 |---|---|
 | [`/recursos`](./recursos) | El two-pager de la sesión: conectores, cómo crear skills, y una guía de GitHub para no programadores. |
+| [`/recursos/bsm-calculator`](./recursos/bsm-calculator) | Explicador visual interactivo del modelo Black-Scholes-Merton: precios de opciones europeas y las griegas completas en vivo. Aportado por Eduardo Ramos, CFA (licencia MIT). |
 | [`/instrucciones`](./instrucciones) | Plantilla de instrucciones personalizadas para usar Claude/ChatGPT en tareas de análisis financiero como CFA charterholder. |
 
 ## ¿Por dónde empezar?

@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<!--
+  =====================================================================
+  Black-Scholes-Merton — A Visual Explainer
+  Autor: Eduardo Ramos, CFA  (github.com/EERamos)
+  Repositorio original: https://github.com/EERamos/bsm-calculator
+  Demo en vivo: https://eeramos.github.io/bsm-calculator/
+  Licencia: MIT — Copyright (c) 2026 Eduardo Ramos.
+  Conserva este aviso de autoria en cualquier copia o version derivada.
+  =====================================================================
+-->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Black-Scholes-Merton, A Visual Explainer</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+  MathJax = { tex: { inlineMath: [['$','$'], ['\\(','\\)']] }, svg: { fontCache: 'global' } };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+<style>
+  /* =====================================================================
+     DESIGN TOKENS — OKLCH palette, 4pt spacing, modular type scale 1.200
+     ===================================================================== */
+  :root {
+    --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+    --s-5: 20px; --s-6: 24px; --s-7: 32px; --s-8: 48px;
+    --s-9: 64px; --s-10: 96px;
+
+    --t-xs:   0.75rem;   /* 12 */
+    --t-sm:   0.875rem;  /* 14 */
+    --t-base: 1rem;      /* 16 */
+    --t-md:   1.125rem;  /* 18 */
+    --t-lg:   1.375rem;  /* 22 */
+    --t-xl:   1.75rem;   /* 28 */
+    --t-2xl:  2.25rem;   /* 36 */
+    --t-3xl:  3rem;      /* 48 */
+
+    --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+
+    --lh-tight: 1.15;
+    --lh-snug:  1.35;
+    --lh-norm:  1.55;
+    --lh-loose: 1.75;
+
+    --r-sm: 4px;
+    --r-md: 8px;
+    --r-lg: 14px;
+
+    --motion: 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Dark register: editorial-quant, away from cyan-trader reflex.
+     Hue 245 (slate-violet) base; accent 80 (warm amber); call 155 (mossy green); put 25 (terracotta). */
+  [data-theme="dark"] {
+    --bg-base:    oklch(14% 0.014 245);
+    --bg-raised:  oklch(18% 0.018 245);
+    --bg-overlay: oklch(23% 0.022 245);
+    --border-1:   oklch(28% 0.020 245);
+    --border-2:   oklch(40% 0.024 245);
+    --tx-1:       oklch(95% 0.010 245);
+    --tx-2:       oklch(74% 0.022 245);
+    --tx-3:       oklch(58% 0.020 245);
+    --accent:     oklch(78% 0.14 80);
+    --accent-soft: oklch(78% 0.14 80 / 0.14);
+    --call:       oklch(74% 0.13 155);
+    --put:        oklch(70% 0.16 25);
+    --ring:       oklch(78% 0.14 80 / 0.45);
+    color-scheme: dark;
+  }
+
+  /* Light register: paper-cream editorial. Subverts the finance-dashboard reflex. */
+  [data-theme="light"] {
+    --bg-base:    oklch(97% 0.008 80);
+    --bg-raised:  oklch(99.5% 0.004 80);
+    --bg-overlay: oklch(93% 0.012 80);
+    --border-1:   oklch(86% 0.012 80);
+    --border-2:   oklch(68% 0.020 80);
+    --tx-1:       oklch(22% 0.020 245);
+    --tx-2:       oklch(45% 0.024 245);
+    --tx-3:       oklch(60% 0.020 245);
+    --accent:     oklch(50% 0.16 30);
+    --accent-soft: oklch(50% 0.16 30 / 0.10);
+    --call:       oklch(48% 0.13 155);
+    --put:        oklch(48% 0.17 25);
+    --ring:       oklch(50% 0.16 30 / 0.40);
+    color-scheme: light;
+  }
+
+  /* =====================================================================
+     RESET
+     ===================================================================== */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg-base);
+    color: var(--tx-1);
+    font-family: var(--font-sans);
+    font-size: var(--t-base);
+    line-height: var(--lh-norm);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background var(--motion), color var(--motion);
+  }
+  button { font: inherit; cursor: pointer; }
+  :focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); border-radius: var(--r-sm); }
+  h1, h2, h3 { text-wrap: balance; }
+  p { text-wrap: pretty; }
+
+  /* =====================================================================
+     HEADER — narrative entry, theme toggle, byline
+     ===================================================================== */
+  .header {
+    padding-block: var(--s-6) var(--s-5);
+    padding-inline: max(var(--s-5), calc((100% - 1480px) / 2));
+    border-bottom: 1px solid var(--border-1);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--s-4);
+    align-items: start;
+  }
+  .header h1 {
+    margin: 0 0 var(--s-2);
+    font-size: var(--t-lg);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: var(--lh-tight);
+    color: var(--tx-1);
+    max-width: 22ch;
+  }
+  .header .lede {
+    margin: 0;
+    color: var(--tx-2);
+    font-size: var(--t-sm);
+    line-height: var(--lh-snug);
+  }
+  .header .byline {
+    margin-top: var(--s-3);
+    font-size: var(--t-xs);
+    color: var(--tx-3);
+  }
+  .header .byline strong { color: var(--tx-1); font-weight: 600; }
+
+  .theme-toggle {
+    background: transparent;
+    border: 1px solid var(--border-2);
+    color: var(--tx-2);
+    padding: var(--s-1) var(--s-3);
+    border-radius: var(--r-md);
+    font-size: var(--t-xs);
+    transition: color var(--motion), border-color var(--motion), background var(--motion);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-1);
+  }
+  .theme-toggle:hover {
+    color: var(--tx-1);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  /* =====================================================================
+     INTRO — explainer narrative, sets reader expectation
+     ===================================================================== */
+  .intro {
+    padding-block: var(--s-7);
+    padding-inline: max(var(--s-5), calc((100% - 1480px) / 2));
+    border-bottom: 1px solid var(--border-1);
+    background: var(--bg-raised);
+  }
+  .intro p {
+    margin: 0;
+    color: var(--tx-2);
+    font-size: var(--t-md);
+    line-height: var(--lh-loose);
+  }
+  .intro p + p { margin-top: var(--s-4); }
+  .intro .pull { color: var(--tx-1); font-weight: 500; }
+
+  /* =====================================================================
+     MAIN
+     ===================================================================== */
+  main {
+    padding-block: var(--s-7) var(--s-9);
+    padding-inline: max(var(--s-5), calc((100% - 1480px) / 2));
+  }
+
+  /* Section header pattern, used between content sections. */
+  .section {
+    margin-top: var(--s-9);
+  }
+  .section:first-child { margin-top: 0; }
+  .section-head {
+    margin-bottom: var(--s-5);
+    padding-bottom: var(--s-3);
+    border-bottom: 1px solid var(--border-1);
+  }
+  .section-head h2 {
+    margin: 0;
+    font-size: var(--t-lg);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--tx-1);
+  }
+  .section-head .desc {
+    margin-top: var(--s-2);
+    font-size: var(--t-sm);
+    color: var(--tx-3);
+  }
+  .section-head .num {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: var(--t-xs);
+    color: var(--tx-3);
+    letter-spacing: 0.12em;
+    margin-bottom: var(--s-2);
+  }
+  .section-head .num::after {
+    content: " ─";
+    color: var(--border-2);
+  }
+
+  /* Asymmetric chart rows — visual rhythm, not 1fr/1fr monotony */
+  .chart-row.asym-a { grid-template-columns: 1fr; }
+  .chart-row.asym-b { grid-template-columns: 1fr; }
+  .chart-row.three  { grid-template-columns: 1fr; }
+  @media (min-width: 720px) {
+    .chart-row.asym-a { grid-template-columns: 1.6fr 1fr; }
+    .chart-row.asym-b { grid-template-columns: 1fr 1.6fr; }
+    .chart-row.three  { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* Editorial input zone — sliders compact, prices as display type */
+  .editorial-inputs {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--s-7);
+  }
+  @media (min-width: 1024px) {
+    .editorial-inputs { grid-template-columns: 1.1fr 1fr; gap: var(--s-9); align-items: center; }
+  }
+
+  .slider-stack {
+    background: var(--bg-raised);
+    border: 1px solid var(--border-1);
+    border-radius: var(--r-lg);
+    padding: var(--s-6);
+  }
+  .slider-stack .presets {
+    display: flex; flex-wrap: wrap; gap: var(--s-2); margin-bottom: var(--s-5);
+  }
+  .slider-stack .presets button {
+    background: transparent; color: var(--tx-2);
+    border: 1px solid var(--border-2);
+    padding: var(--s-1) var(--s-3);
+    font-size: var(--t-xs);
+    border-radius: var(--r-md);
+    transition: color var(--motion), border-color var(--motion), background var(--motion);
+  }
+  .slider-stack .presets button:hover {
+    color: var(--tx-1); border-color: var(--accent); background: var(--accent-soft);
+  }
+
+  /* Price display — editorial, no card chrome, no border-stripe */
+  .price-display {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s-5);
+    align-items: baseline;
+  }
+  .price-display .label {
+    display: block;
+    font-size: var(--t-xs);
+    color: var(--tx-3);
+    letter-spacing: 0.06em;
+    margin-bottom: var(--s-1);
+  }
+  .price-display .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(2.5rem, 6vw + 1rem, 4.5rem);
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    display: block;
+  }
+  .price-display .num.call { color: var(--call); }
+  .price-display .num.put  { color: var(--put); }
+  .price-display .currency {
+    font-size: 0.55em;
+    color: var(--tx-3);
+    font-weight: 400;
+    margin-right: 0.05em;
+  }
+  .price-display .meta {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3) var(--s-6);
+    padding-top: var(--s-4);
+    margin-top: var(--s-4);
+    border-top: 1px solid var(--border-1);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--t-sm);
+    color: var(--tx-2);
+  }
+  .price-display .meta .k {
+    color: var(--tx-3);
+    font-family: var(--font-sans);
+    margin-right: var(--s-2);
+  }
+  .price-display .meta .parity-good { color: var(--call); }
+
+  /* Disclosure pattern — used for progressive Greeks reveal and glossary */
+  details.disclose {
+    margin-top: var(--s-7);
+  }
+  details.disclose > summary {
+    list-style: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-3);
+    padding: var(--s-3) var(--s-4);
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-md);
+    font-size: var(--t-sm);
+    font-weight: 600;
+    color: var(--tx-2);
+    transition: color var(--motion), border-color var(--motion), background var(--motion);
+  }
+  details.disclose > summary::-webkit-details-marker { display: none; }
+  details.disclose > summary:hover {
+    color: var(--tx-1);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  details.disclose > summary::after {
+    content: "+";
+    color: var(--tx-3);
+    font-weight: 400;
+    margin-left: var(--s-2);
+  }
+  details.disclose[open] > summary::after { content: "−"; }
+  details.disclose .body { margin-top: var(--s-5); }
+
+  /* =====================================================================
+     INPUT PANEL — sliders left, inline tabular readout right.
+     No hero-metric cards. No side-stripe.
+     ===================================================================== */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--s-6);
+    background: var(--bg-raised);
+    border: 1px solid var(--border-1);
+    border-radius: var(--r-lg);
+    padding: var(--s-6);
+  }
+
+  .controls .label-block { margin-bottom: var(--s-4); }
+  .controls .label-block .title {
+    font-size: var(--t-sm);
+    font-weight: 600;
+    color: var(--tx-1);
+  }
+  .controls .label-block .hint {
+    margin-top: var(--s-1);
+    font-size: var(--t-xs);
+    color: var(--tx-3);
+  }
+
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-2);
+    margin-bottom: var(--s-5);
+  }
+  .presets button {
+    background: transparent;
+    color: var(--tx-2);
+    border: 1px solid var(--border-2);
+    padding: var(--s-1) var(--s-3);
+    font-size: var(--t-xs);
+    border-radius: var(--r-md);
+    transition: color var(--motion), border-color var(--motion), background var(--motion);
+  }
+  .presets button:hover {
+    color: var(--tx-1);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .slider {
+    display: grid;
+    grid-template-columns: 52px 1fr 84px;
+    gap: var(--s-3);
+    align-items: center;
+    padding: var(--s-3) 0;
+  }
+  .slider + .slider { border-top: 1px solid var(--border-1); }
+  .slider .label {
+    font-size: var(--t-sm);
+    color: var(--tx-1);
+    font-weight: 500;
+    line-height: 1.1;
+  }
+  .slider .label small {
+    display: block;
+    font-weight: 400;
+    color: var(--tx-3);
+    font-size: var(--t-xs);
+    margin-top: 2px;
+  }
+  .slider input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent) var(--p, 50%), var(--bg-overlay) var(--p, 50%));
+    border-radius: 999px;
+    outline: none;
+  }
+  .slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--tx-1);
+    border: 2px solid var(--accent);
+    cursor: grab;
+    transition: transform var(--motion);
+  }
+  .slider input[type="range"]::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.08); }
+  .slider input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--tx-1); border: 2px solid var(--accent); cursor: grab;
+  }
+  .slider .val {
+    font-family: var(--font-mono);
+    font-size: var(--t-sm);
+    color: var(--accent);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Inline tabular readout — replaces hero-metric cards. */
+  .readout {
+    margin-top: var(--s-5);
+    padding-top: var(--s-5);
+    border-top: 1px solid var(--border-1);
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--s-4) var(--s-6);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .readout .row { display: flex; align-items: baseline; gap: var(--s-2); }
+  .readout .row .k {
+    color: var(--tx-3);
+    font-family: var(--font-sans);
+    font-size: var(--t-xs);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    min-width: 3em;
+  }
+  .readout .row .v {
+    font-size: var(--t-md);
+    color: var(--tx-1);
+    font-weight: 600;
+  }
+  .readout .row.call .v { color: var(--call); }
+  .readout .row.put  .v { color: var(--put); }
+  .readout .row .u {
+    font-family: var(--font-sans);
+    font-size: var(--t-xs);
+    color: var(--tx-3);
+  }
+  .readout .parity {
+    grid-column: 1 / -1;
+    padding-top: var(--s-3);
+    border-top: 1px dashed var(--border-1);
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-3);
+    font-size: var(--t-xs);
+    color: var(--tx-3);
+  }
+  .readout .parity .v { color: var(--call); font-family: var(--font-mono); }
+
+  /* =====================================================================
+     CHARTS — composition with rhythm, no identical card grid
+     ===================================================================== */
+  .chart-row {
+    display: grid;
+    gap: var(--s-5);
+    grid-template-columns: 1fr;
+  }
+  .chart-card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border-1);
+    border-radius: var(--r-lg);
+    padding: var(--s-5);
+  }
+  .chart-card .title {
+    margin: 0 0 var(--s-1);
+    font-size: var(--t-base);
+    font-weight: 600;
+    color: var(--tx-1);
+    letter-spacing: -0.005em;
+  }
+  .chart-card .annot {
+    margin: 0 0 var(--s-4);
+    font-size: var(--t-sm);
+    color: var(--tx-3);
+    line-height: var(--lh-snug);
+  }
+  .chart-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-3);
+    margin-left: var(--s-3);
+    vertical-align: middle;
+    font-size: var(--t-xs);
+    color: var(--tx-3);
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+  .chart-legend .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chart-legend .pill::before {
+    content: "";
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+  }
+  .chart-legend .pill.call::before { background: var(--call); }
+  .chart-legend .pill.put::before  { background: var(--put); }
+  .chart      { height: 280px; touch-action: pan-y; }
+  .chart.tall { height: 360px; touch-action: none; }
+  .chart.spark { height: 110px; touch-action: pan-y; }
+
+  /* Sparkline row — 6 charts compact, narrative-density */
+  .sparks {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--s-3);
+  }
+  .spark-card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border-1);
+    border-radius: var(--r-md);
+    padding: var(--s-3) var(--s-4);
+  }
+  .spark-card .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: var(--s-2);
+    gap: var(--s-3);
+  }
+  .spark-card .name {
+    font-size: var(--t-sm);
+    font-weight: 600;
+    color: var(--tx-1);
+  }
+  .spark-card .unit {
+    font-size: var(--t-xs);
+    color: var(--tx-3);
+  }
+  .spark-card .vals {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--t-xs);
+    color: var(--tx-3);
+    display: flex;
+    gap: var(--s-3);
+  }
+  .spark-card .vals .c { color: var(--call); }
+  .spark-card .vals .p { color: var(--put); }
+
+  /* =====================================================================
+     GLOSSARY — collapsible, less prominent
+     ===================================================================== */
+  details.glossary {
+    margin-top: var(--s-9);
+    border-top: 1px solid var(--border-1);
+    padding-top: var(--s-6);
+  }
+  details.glossary summary {
+    list-style: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-2);
+    font-size: var(--t-sm);
+    font-weight: 600;
+    color: var(--tx-2);
+    transition: color var(--motion);
+  }
+  details.glossary summary::-webkit-details-marker { display: none; }
+  details.glossary summary:hover { color: var(--accent); }
+  details.glossary summary::after {
+    content: "+";
+    margin-left: var(--s-2);
+    color: var(--tx-3);
+    font-weight: 400;
+    transition: transform var(--motion);
+  }
+  details.glossary[open] summary::after { content: "−"; }
+  details.glossary .gloss-body {
+    margin-top: var(--s-5);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--s-4);
+  }
+  details.glossary .row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: var(--s-4);
+    padding: var(--s-3) 0;
+    border-bottom: 1px solid var(--border-1);
+  }
+  /* keep border on every row so the 2-col grid stays visually balanced */
+  details.glossary .row .name {
+    font-weight: 600;
+    color: var(--tx-1);
+    font-size: var(--t-sm);
+  }
+  details.glossary .row .desc {
+    color: var(--tx-2);
+    font-size: var(--t-sm);
+    line-height: var(--lh-snug);
+  }
+  details.glossary .row .desc .math {
+    display: block;
+    margin-bottom: var(--s-1);
+    font-family: var(--font-mono);
+    font-size: var(--t-xs);
+    color: var(--tx-3);
+  }
+
+  /* =====================================================================
+     FOOTER
+     ===================================================================== */
+  footer {
+    text-align: center;
+    padding: var(--s-7) var(--s-5);
+    color: var(--tx-3);
+    font-size: var(--t-xs);
+    border-top: 1px solid var(--border-1);
+  }
+  footer strong { color: var(--tx-1); font-weight: 600; }
+
+  /* =====================================================================
+     RESPONSIVE — scale UP from mobile (base = phone)
+     ===================================================================== */
+  @media (min-width: 720px) {
+    .header { padding-block: var(--s-7) var(--s-5); }
+    .header h1 { font-size: var(--t-xl); max-width: none; }
+    .header .lede { font-size: var(--t-base); }
+
+    .intro { padding-block: var(--s-7); }
+    .intro p { font-size: var(--t-md); line-height: var(--lh-loose); }
+
+    main { padding-block: var(--s-8) var(--s-10); }
+
+    .controls {
+      grid-template-columns: 1.05fr 1fr;
+      gap: var(--s-8);
+      padding: var(--s-7);
+    }
+    .readout { margin-top: 0; padding-top: 0; border-top: none; align-content: start; }
+
+    .chart-row { grid-template-columns: 1fr 1fr; }
+
+    .sparks { grid-template-columns: repeat(3, 1fr); }
+
+    details.glossary .gloss-body { grid-template-columns: 1fr 1fr; }
+    details.glossary .row { grid-template-columns: 80px 1fr; }
+  }
+
+  @media (min-width: 1100px) {
+    .header h1 { font-size: var(--t-2xl); }
+    .header .lede { font-size: var(--t-md); }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <h1>Black-Scholes-Merton, a visual explainer</h1>
+    <p class="lede">The pricing formula is the headline. The Greeks (its partial derivatives) are what an options trader actually hedges. Move the sliders and watch every chart redraw, live.</p>
+    <p class="byline">Built by <strong>Eduardo Ramos, CFA</strong></p>
+  </div>
+  <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Switch color theme">
+    <span id="themeLabel">Light mode</span>
+  </button>
+</header>
+
+<section class="intro">
+  <p><span class="pull">For most people, Black-Scholes ends at the price.</span> That is where the interesting part actually starts. The same closed-form equation hides a whole family of partial derivatives, and those derivatives are what trading books are actually built around.</p>
+  <p>What follows is the model laid out as a working instrument. Six inputs at the top, the live price and Greeks immediately below, and twelve charts that show how each sensitivity deforms when you change the underlying, the volatility, or the time to expiry.</p>
+</section>
+
+<main>
+
+  <!-- ====== SECTION 01 — INPUTS + EDITORIAL PRICE DISPLAY ====== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">01</span>
+      <h2>The inputs, and what they price</h2>
+      <p class="desc">Six market and contract parameters on the left, the resulting Call and Put on the right. Move any slider; every number redraws on the same frame.</p>
+    </div>
+
+    <div class="editorial-inputs">
+      <div class="slider-stack">
+        <div class="presets">
+          <button onclick="loadPreset('atm')">At the money</button>
+          <button onclick="loadPreset('itmCall')">Deep ITM call</button>
+          <button onclick="loadPreset('otmPut')">OTM put</button>
+          <button onclick="loadPreset('shortExp')">Near expiry</button>
+          <button onclick="loadPreset('highVol')">High vol regime</button>
+        </div>
+        <div id="sliders"></div>
+      </div>
+
+      <div class="price-display">
+        <div>
+          <span class="label">Call</span>
+          <span class="num call"><span class="currency">$</span><span id="callPrice">—</span></span>
+        </div>
+        <div>
+          <span class="label">Put</span>
+          <span class="num put"><span class="currency">$</span><span id="putPrice">—</span></span>
+        </div>
+        <div class="meta">
+          <span><span class="k">d<sub>1</sub></span><span id="d1Val">—</span></span>
+          <span><span class="k">d<sub>2</sub></span><span id="d2Val">—</span></span>
+          <span><span class="k">Parity residual</span><span id="pcpVal" class="parity-good">—</span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== SECTION 02 — PAYOFF AND PRICING (asymmetric: payoff dominates) ====== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">02</span>
+      <h2>The shape of the contract</h2>
+      <p class="desc">At expiry the option is its payoff. Before expiry, BSM lifts the value above intrinsic by an amount that pure time and volatility explain.</p>
+    </div>
+    <div class="chart-row asym-a">
+      <div class="chart-card">
+        <h3 class="title">Payoff at expiry</h3>
+        <p class="annot">The hockey sticks every options book starts with. The diamond marks the current spot, so you can read where the payoff lands for the current contract.</p>
+        <div id="chartPayoff" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3 class="title">Value vs spot</h3>
+        <p class="annot">Smooth curves are BSM. Dotted lines are intrinsic.</p>
+        <div id="chartPrice" class="chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== SECTION 03 — DELTA AND GAMMA (the hedge story) ====== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">03</span>
+      <h2>Delta and Gamma, the hedge</h2>
+      <p class="desc">The first two derivatives with respect to spot. Delta is the hedge ratio, Gamma is how fast the hedge ratio moves. Together they govern almost every dynamic-hedging decision on a real options book.</p>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <h3 class="title">Delta vs spot
+          <span class="chart-legend">
+            <span class="pill call">Call</span>
+            <span class="pill put">Put</span>
+          </span>
+        </h3>
+        <p class="annot">Call delta sweeps from 0 to e<sup>−qτ</sup> as the option crosses from deep OTM to deep ITM. Put delta is its symmetric counterpart, bounded between −e<sup>−qτ</sup> and 0. The two dots mark the current spot: top dot is the Call delta right now, bottom dot is the Put.</p>
+        <div id="chartDelta" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3 class="title">Gamma vs spot
+          <span class="chart-legend">
+            <span class="pill call">Call</span>
+            <span class="pill put">Put</span>
+          </span>
+        </h3>
+        <p class="annot">Gamma peaks at the money and tightens as expiry approaches. Identical for Call and Put, so the two dots sit on top of each other. This is why short-gamma books bleed on Friday afternoons.</p>
+        <div id="chartGamma" class="chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== SECTION 04 — VEGA, THETA, RHO (hero-level first-order Greeks) ====== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">04</span>
+      <h2>Vega, Theta, Rho</h2>
+      <p class="desc">The three other first-order sensitivities. Vega is exposure to volatility, Theta is time decay, Rho is sensitivity to the risk-free rate. Together with Delta they cover the linear part of the BSM gradient.</p>
+    </div>
+    <div class="chart-row three">
+      <div class="chart-card">
+        <h3 class="title">Vega vs spot
+          <span class="chart-legend">
+            <span class="pill call">Call</span>
+            <span class="pill put">Put</span>
+          </span>
+        </h3>
+        <p class="annot">Identical for Call and Put. Peaks ATM where the option carries the most optionality. Per 1% move in σ.</p>
+        <div id="chartVega" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3 class="title">Theta vs spot
+          <span class="chart-legend">
+            <span class="pill call">Call</span>
+            <span class="pill put">Put</span>
+          </span>
+        </h3>
+        <p class="annot">The rent you pay for optionality. Negative for long options, most aggressive when the option is ATM and close to expiry. Per calendar day.</p>
+        <div id="chartTheta" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3 class="title">Rho vs spot
+          <span class="chart-legend">
+            <span class="pill call">Call</span>
+            <span class="pill put">Put</span>
+          </span>
+        </h3>
+        <p class="annot">Sensitivity to the risk-free rate. Positive for Calls, negative for Puts. Becomes material on long-dated options. Per 1% move in r.</p>
+        <div id="chartRho" class="chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== SECTION 05 — CROSS-DERIVATIVES (progressive disclosure) ====== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">05</span>
+      <h2>Cross-derivatives, on demand</h2>
+      <p class="desc">Vanna, Volga, Charm. The second-order Greeks that govern how the first-order ones move when more than one input changes. Each sparkline plots the Greek across the spot axis; the dot marks the current spot, with
+        <span class="chart-legend">
+          <span class="pill call">Call</span>
+          <span class="pill put">Put</span>
+        </span>.
+        When the Greek is identical for Call and Put (as with Vanna and Volga) the two dots overlap.</p>
+    </div>
+    <details class="disclose">
+      <summary>Reveal Vanna, Volga, Charm</summary>
+      <div class="body">
+        <div class="sparks" id="sparks"></div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ====== SECTION 06 — TIME AND VOLATILITY (asymmetric: vol dominates) ====== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">06</span>
+      <h2>Time and volatility</h2>
+      <p class="desc">How the value depends on inputs other than spot. Dashed vertical lines mark the current τ and σ.</p>
+    </div>
+    <div class="chart-row asym-b">
+      <div class="chart-card">
+        <h3 class="title">Value vs time to maturity</h3>
+        <p class="annot">ATM value scales roughly with √τ.</p>
+        <div id="chartTime" class="chart"></div>
+      </div>
+      <div class="chart-card">
+        <h3 class="title">Value vs volatility</h3>
+        <p class="annot">Roughly linear ATM. Curves into convexity as the option moves OTM. The shape of vega and volga is hiding underneath this line.</p>
+        <div id="chartVol" class="chart"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== SECTION 07 — 3D SURFACES ====== -->
+  <section class="section">
+    <div class="section-head">
+      <span class="num">07</span>
+      <h2>Price as a surface over spot and volatility</h2>
+      <p class="desc">Two slices of the same hypersurface. Hold τ, r, q fixed; vary spot and vol; get a 2D manifold of prices. One finger to rotate on touch, two fingers to zoom.</p>
+    </div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <h3 class="title">Call price</h3>
+        <div id="surfCall" class="chart tall"></div>
+      </div>
+      <div class="chart-card">
+        <h3 class="title">Put price</h3>
+        <div id="surfPut" class="chart tall"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== GLOSSARY (collapsible, low priority) ====== -->
+  <details class="glossary">
+    <summary>What each Greek measures</summary>
+    <div class="gloss-body">
+      <div class="row"><div class="name">Delta</div><div class="desc"><span class="math">∂V/∂S</span>Rate of change of value w.r.t. underlying. The hedge ratio.</div></div>
+      <div class="row"><div class="name">Gamma</div><div class="desc"><span class="math">∂²V/∂S²</span>Convexity in spot. Peaks ATM, decays for OTM/ITM as expiry nears.</div></div>
+      <div class="row"><div class="name">Vega</div><div class="desc"><span class="math">∂V/∂σ</span>Sensitivity to implied volatility. Long options are long vega.</div></div>
+      <div class="row"><div class="name">Theta</div><div class="desc"><span class="math">∂V/∂t</span>Time decay. The rent you pay for optionality.</div></div>
+      <div class="row"><div class="name">Rho</div><div class="desc"><span class="math">∂V/∂r</span>Sensitivity to the risk-free rate. Matters for long-dated options.</div></div>
+      <div class="row"><div class="name">Vanna</div><div class="desc"><span class="math">∂²V/∂S∂σ</span>Cross-sensitivity. Why "delta hedging" alone is incomplete.</div></div>
+      <div class="row"><div class="name">Volga</div><div class="desc"><span class="math">∂²V/∂σ²</span>Convexity in vol. The vol-of-vol exposure underneath every smile.</div></div>
+      <div class="row"><div class="name">Charm</div><div class="desc"><span class="math">∂²V/∂S∂t</span>Delta decay over time. Important for overnight risk into expiry.</div></div>
+    </div>
+  </details>
+
+</main>
+
+<footer>
+  Built by <strong>Eduardo Ramos, CFA</strong>.
+</footer>
+
+<!-- =====================================================================
+     ENGINE
+     ===================================================================== -->
+<script>
+"use strict";
+
+/* ---------- Standard normal (Abramowitz-Stegun 26.2.17, ~6 dp) ---------- */
+function normPdf(x){ return Math.exp(-0.5*x*x) / Math.sqrt(2*Math.PI); }
+function normCdf(x){
+  const a1=0.319381530, a2=-0.356563782, a3=1.781477937, a4=-1.821255978, a5=1.330274429;
+  const sign = x >= 0 ? 1 : -1;
+  const z = Math.abs(x);
+  const k = 1 / (1 + 0.2316419 * z);
+  const n = normPdf(z);
+  let N = 1 - n * (a1*k + a2*Math.pow(k,2) + a3*Math.pow(k,3) + a4*Math.pow(k,4) + a5*Math.pow(k,5));
+  return sign > 0 ? N : 1 - N;
+}
+
+/* ---------- Full BSM with Greeks ---------- */
+function bsm(S, K, r, q, sigma, tau, type){
+  /* Closed-form limits when the formula is undefined.
+     - tau <= 0:  price = intrinsic; delta = Heaviside (1 ITM, 0 OTM, 0.5 ATM).
+     - sigma <= 0: price = discounted intrinsic of the forward.
+     Higher-order Greeks are 0 or unbounded; return 0 by convention. */
+  if (tau <= 0 || sigma <= 0 || S <= 0){
+    const discR = Math.exp(-r*Math.max(tau,0));
+    const discQ = Math.exp(-q*Math.max(tau,0));
+    let price, delta;
+    if (tau <= 0){
+      if (type === 'call'){
+        price = Math.max(S-K, 0);
+        delta = S > K ? 1 : (S < K ? 0 : 0.5);
+      } else {
+        price = Math.max(K-S, 0);
+        delta = S < K ? -1 : (S > K ? 0 : -0.5);
+      }
+    } else { // sigma <= 0
+      const fwd = S*discQ - K*discR;
+      if (type === 'call'){
+        price = Math.max(fwd, 0);
+        delta = fwd > 0 ? discQ : (fwd < 0 ? 0 : 0.5*discQ);
+      } else {
+        price = Math.max(-fwd, 0);
+        delta = fwd < 0 ? -discQ : (fwd > 0 ? 0 : -0.5*discQ);
+      }
+    }
+    return { price, delta, gamma:0, vega:0, theta:0, rho:0, vanna:0, volga:0, charm:0, d1:0, d2:0 };
+  }
+  const sst = sigma * Math.sqrt(tau);
+  const d1 = (Math.log(S/K) + (r - q + 0.5*sigma*sigma)*tau) / sst;
+  const d2 = d1 - sst;
+  const discR = Math.exp(-r*tau), discQ = Math.exp(-q*tau);
+  const Nd1 = normCdf(d1), Nd2 = normCdf(d2);
+  const Nmd1 = normCdf(-d1), Nmd2 = normCdf(-d2);
+  const nd1 = normPdf(d1);
+
+  let price, delta, theta, rho, charm;
+  if (type === 'call'){
+    price = S*discQ*Nd1 - K*discR*Nd2;
+    delta = discQ*Nd1;
+    theta = -S*discQ*nd1*sigma/(2*Math.sqrt(tau)) - r*K*discR*Nd2 + q*S*discQ*Nd1;
+    rho   = K*tau*discR*Nd2;
+    charm = -discQ * ( nd1*(2*(r-q)*tau - d2*sst)/(2*tau*sst) - q*Nd1 );
+  } else {
+    price = K*discR*Nmd2 - S*discQ*Nmd1;
+    delta = -discQ*Nmd1;
+    theta = -S*discQ*nd1*sigma/(2*Math.sqrt(tau)) + r*K*discR*Nmd2 - q*S*discQ*Nmd1;
+    rho   = -K*tau*discR*Nmd2;
+    charm = -discQ * ( nd1*(2*(r-q)*tau - d2*sst)/(2*tau*sst) + q*Nmd1 );
+  }
+  const gamma = discQ * nd1 / (S * sst);
+  const vega  = S * discQ * nd1 * Math.sqrt(tau);
+  const vanna = -discQ * nd1 * d2 / sigma;
+  const volga = vega * d1 * d2 / sigma;
+  return { price, delta, gamma, vega, theta, rho, vanna, volga, charm, d1, d2 };
+}
+
+/* ---------- Theme toggle ---------- */
+function toggleTheme(){
+  const root = document.documentElement;
+  const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', next);
+  document.getElementById('themeLabel').textContent = next === 'dark' ? 'Light mode' : 'Dark mode';
+  // re-read colors and re-render charts with new palette
+  Object.assign(COLORS, readColors());
+  render();
+}
+
+/* ---------- Resolve any CSS color (including oklch) to rgb string ---------- */
+/* Plotly does not parse oklch(). Some browsers' getComputedStyle now returns
+   the source color space unchanged, so use a 1x1 canvas to force conversion
+   to sRGB pixel data, then read it back as rgb(). Bulletproof across browsers. */
+const _resolverCanvas = document.createElement('canvas');
+_resolverCanvas.width = _resolverCanvas.height = 1;
+const _resolverCtx = _resolverCanvas.getContext('2d');
+function resolveColor(cssColor){
+  if (!cssColor) return cssColor;
+  _resolverCtx.clearRect(0, 0, 1, 1);
+  _resolverCtx.fillStyle = '#000';
+  _resolverCtx.fillStyle = cssColor;
+  _resolverCtx.fillRect(0, 0, 1, 1);
+  const d = _resolverCtx.getImageData(0, 0, 1, 1).data;
+  return `rgb(${d[0]}, ${d[1]}, ${d[2]})`;
+}
+
+/* ---------- Read CSS tokens at runtime ---------- */
+function readColors(){
+  const css = getComputedStyle(document.documentElement);
+  const grab = (name, fallback) => {
+    const raw = css.getPropertyValue(name).trim() || fallback;
+    return resolveColor(raw);
+  };
+  return {
+    call:    grab('--call',    '#2dd4a7'),
+    put:     grab('--put',     '#ff6d92'),
+    accent:  grab('--accent',  '#f0b400'),
+    tx2:     grab('--tx-2',    '#a8b3d0'),
+    tx3:     grab('--tx-3',    '#7884a8'),
+    border1: grab('--border-1','#232d4d'),
+    border2: grab('--border-2','#344066'),
+    bgRaised:grab('--bg-raised','#131a30'),
+    tx1:     grab('--tx-1',    '#eaf0fb'),
+  };
+}
+const COLORS = readColors();
+
+/* ---------- Sliders ---------- */
+const sliderDefs = [
+  { id:'S',     label:'S',     sub:'Spot',      min:1,    max:300,  step:1,     val:100 },
+  { id:'K',     label:'K',     sub:'Strike',    min:1,    max:300,  step:1,     val:100 },
+  { id:'r',     label:'r',     sub:'Rate %',    min:-2,   max:15,   step:0.1,   val:5   },
+  { id:'q',     label:'q',     sub:'Div %',     min:0,    max:10,   step:0.1,   val:2   },
+  { id:'sigma', label:'σ',     sub:'Vol %',     min:1,    max:120,  step:0.5,   val:20  },
+  { id:'tau',   label:'τ',     sub:'Years',     min:0.01, max:5,    step:0.01,  val:1   },
+];
+const state = {};
+sliderDefs.forEach(s => state[s.id] = s.val);
+
+const sliderHost = document.getElementById('sliders');
+sliderDefs.forEach(s => {
+  const wrap = document.createElement('div');
+  wrap.className = 'slider';
+  wrap.innerHTML = `
+    <label class="label">${s.label}<small>${s.sub}</small></label>
+    <input type="range" id="rng-${s.id}" min="${s.min}" max="${s.max}" step="${s.step}" value="${s.val}" aria-label="${s.label} ${s.sub}">
+    <div class="val" id="lbl-${s.id}"></div>
+  `;
+  sliderHost.appendChild(wrap);
+  const inp = wrap.querySelector(`#rng-${s.id}`);
+  const lbl = wrap.querySelector(`#lbl-${s.id}`);
+  const updFill = () => {
+    const p = ((inp.value - s.min) / (s.max - s.min)) * 100;
+    inp.style.setProperty('--p', p + '%');
+  };
+  const fmt = v => {
+    if (s.id === 'r' || s.id === 'q' || s.id === 'sigma') return Number(v).toFixed(2) + '%';
+    if (s.id === 'tau') return Number(v).toFixed(2) + 'y';
+    return Number(v).toFixed(0);
+  };
+  inp.addEventListener('input', e => {
+    state[s.id] = parseFloat(e.target.value);
+    lbl.textContent = fmt(e.target.value);
+    updFill();
+    render();
+  });
+  lbl.textContent = fmt(s.val);
+  updFill();
+});
+
+/* ---------- Sparkline cards (the 6 secondary Greeks) ---------- */
+const sparkDefs = [
+  { id:'spVanna', key:'vanna', scale:1/100,   name:'Vanna', unit:'per 1% vol'  },
+  { id:'spVolga', key:'volga', scale:1/10000, name:'Volga', unit:'per (1% vol)²' },
+  { id:'spCharm', key:'charm', scale:1/365,   name:'Charm', unit:'per day'     },
+];
+const sparkHost = document.getElementById('sparks');
+sparkDefs.forEach(s => {
+  const c = document.createElement('div');
+  c.className = 'spark-card';
+  c.innerHTML = `
+    <div class="head">
+      <div>
+        <div class="name">${s.name}</div>
+        <div class="unit">${s.unit}</div>
+      </div>
+      <div class="vals">
+        <span class="c" id="${s.id}-c">—</span>
+        <span class="p" id="${s.id}-p">—</span>
+      </div>
+    </div>
+    <div class="chart spark" id="${s.id}"></div>
+  `;
+  sparkHost.appendChild(c);
+});
+
+/* ---------- Plotly layouts ---------- */
+const config = { displayModeBar:false, responsive:true, scrollZoom:false, doubleClick:false };
+
+function baseLayout(opts = {}){
+  return {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor:  'rgba(0,0,0,0)',
+    font:   { color: COLORS.tx2, family: '-apple-system, Inter, sans-serif', size: 11 },
+    margin: opts.margin || { l: 48, r: 16, t: 8, b: 36 },
+    xaxis:  { gridcolor: COLORS.border1, zerolinecolor: COLORS.border2, linecolor: COLORS.border2, fixedrange: true, ...opts.xaxis },
+    yaxis:  { gridcolor: COLORS.border1, zerolinecolor: COLORS.border2, linecolor: COLORS.border2, fixedrange: true, ...opts.yaxis },
+    showlegend: false,
+    hovermode: 'x unified',
+    hoverlabel: { bgcolor: COLORS.bgRaised, bordercolor: COLORS.border2, font: { color: COLORS.tx1 } },
+    dragmode: false,
+  };
+}
+
+function sparkLayout(){
+  return {
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor:  'rgba(0,0,0,0)',
+    font:   { color: COLORS.tx3, size: 9 },
+    margin: { l: 0, r: 0, t: 0, b: 0 },
+    xaxis:  { visible:false, fixedrange:true },
+    yaxis:  { visible:false, fixedrange:true },
+    showlegend:false,
+    hovermode:'x unified',
+    hoverlabel: { bgcolor: COLORS.bgRaised, bordercolor: COLORS.border2, font:{color:COLORS.tx1, size:11} },
+    dragmode:false,
+  };
+}
+
+function range(min, max, n){
+  const arr = new Array(n);
+  const step = (max - min) / (n-1);
+  for (let i=0; i<n; i++) arr[i] = min + i*step;
+  return arr;
+}
+
+/* ---------- Render ---------- */
+function getParams(){
+  return {
+    S: state.S, K: state.K,
+    r: state.r/100, q: state.q/100,
+    sigma: state.sigma/100, tau: state.tau
+  };
+}
+function fmt(x, d=4){ if(!isFinite(x)) return 'n/a'; return x.toFixed(d); }
+
+function render(){
+  const p = getParams();
+  const c = bsm(p.S, p.K, p.r, p.q, p.sigma, p.tau, 'call');
+  const pu = bsm(p.S, p.K, p.r, p.q, p.sigma, p.tau, 'put');
+
+  document.getElementById('callPrice').textContent = c.price.toFixed(4);
+  document.getElementById('putPrice').textContent  = pu.price.toFixed(4);
+  document.getElementById('d1Val').textContent = c.d1.toFixed(4);
+  document.getElementById('d2Val').textContent = c.d2.toFixed(4);
+  const pcp = (c.price - pu.price) - (p.S*Math.exp(-p.q*p.tau) - p.K*Math.exp(-p.r*p.tau));
+  document.getElementById('pcpVal').textContent = pcp.toExponential(2);
+
+  const Sgrid = range(Math.max(1, p.S*0.4), p.S*1.8, 80);
+
+  /* ---- Payoff ---- */
+  const payoffC = Sgrid.map(s => Math.max(s - p.K, 0));
+  const payoffP = Sgrid.map(s => Math.max(p.K - s, 0));
+  Plotly.react('chartPayoff', [
+    { x:Sgrid, y:payoffC, type:'scatter', mode:'lines', name:'Call', line:{color:COLORS.call, width:2.5} },
+    { x:Sgrid, y:payoffP, type:'scatter', mode:'lines', name:'Put',  line:{color:COLORS.put,  width:2.5} },
+    { x:[p.S], y:[0], type:'scatter', mode:'markers', marker:{color:COLORS.accent, size:10, symbol:'diamond'}, name:'Spot' }
+  ], baseLayout({ xaxis:{title:'Spot at maturity'}, yaxis:{title:'Payoff'} }), config);
+
+  /* ---- Pricing curves ---- */
+  const valC = Sgrid.map(s => bsm(s,p.K,p.r,p.q,p.sigma,p.tau,'call').price);
+  const valP = Sgrid.map(s => bsm(s,p.K,p.r,p.q,p.sigma,p.tau,'put').price);
+  const intrinsicC = Sgrid.map(s => Math.max(s-p.K, 0));
+  const intrinsicP = Sgrid.map(s => Math.max(p.K-s, 0));
+  Plotly.react('chartPrice', [
+    { x:Sgrid, y:intrinsicC, mode:'lines', line:{color:COLORS.call, width:1, dash:'dot'}, opacity:0.55, hoverinfo:'skip' },
+    { x:Sgrid, y:intrinsicP, mode:'lines', line:{color:COLORS.put,  width:1, dash:'dot'}, opacity:0.55, hoverinfo:'skip' },
+    { x:Sgrid, y:valC, mode:'lines', line:{color:COLORS.call, width:2.5}, name:'Call' },
+    { x:Sgrid, y:valP, mode:'lines', line:{color:COLORS.put,  width:2.5}, name:'Put' },
+    { x:[p.S,p.S], y:[0, Math.max(...valC, ...valP)*1.05], mode:'lines',
+      line:{color:COLORS.accent, width:1, dash:'dash'}, hoverinfo:'skip' }
+  ], baseLayout({ xaxis:{title:'Spot S'}, yaxis:{title:'Option value'} }), config);
+
+  /* ---- Greek vs Spot helper (used for Delta, Gamma hero charts) ---- */
+  function plotGreekHero(id, key, scale=1, yTitle=''){
+    const gC = Sgrid.map(s => bsm(s,p.K,p.r,p.q,p.sigma,p.tau,'call')[key]*scale);
+    const gP = Sgrid.map(s => bsm(s,p.K,p.r,p.q,p.sigma,p.tau,'put')[key]*scale);
+    const cVal = bsm(p.S,p.K,p.r,p.q,p.sigma,p.tau,'call')[key]*scale;
+    const pVal = bsm(p.S,p.K,p.r,p.q,p.sigma,p.tau,'put')[key]*scale;
+    Plotly.react(id, [
+      { x:Sgrid, y:gC, mode:'lines', name:'Call', line:{color:COLORS.call, width:2.5}, hovertemplate:'<b>Call</b> %{y:.4f}<extra></extra>' },
+      { x:Sgrid, y:gP, mode:'lines', name:'Put',  line:{color:COLORS.put,  width:2.5}, hovertemplate:'<b>Put</b> %{y:.4f}<extra></extra>' },
+      { x:[p.S], y:[cVal], mode:'markers', marker:{color:COLORS.call, size:10, line:{color:COLORS.bgRaised, width:2}}, name:'Call at current spot',
+        hovertemplate:'<b>Call</b> at S=%{x:.2f}<br>'+key+' = %{y:.4f}<extra></extra>' },
+      { x:[p.S], y:[pVal], mode:'markers', marker:{color:COLORS.put,  size:10, line:{color:COLORS.bgRaised, width:2}}, name:'Put at current spot',
+        hovertemplate:'<b>Put</b> at S=%{x:.2f}<br>'+key+' = %{y:.4f}<extra></extra>' }
+    ], baseLayout({ xaxis:{title:'Spot S'}, yaxis:{title:yTitle} }), config);
+  }
+  plotGreekHero('chartDelta', 'delta', 1, 'Δ');
+  plotGreekHero('chartGamma', 'gamma', 1, 'Γ');
+  plotGreekHero('chartVega',  'vega',  1/100,  'V (per 1% vol)');
+  plotGreekHero('chartTheta', 'theta', 1/365,  'Θ (per day)');
+  plotGreekHero('chartRho',   'rho',   1/100,  'ρ (per 1% rate)');
+
+  /* ---- Sparklines: vega, theta, rho, vanna, volga, charm ---- */
+  sparkDefs.forEach(s => {
+    const gC = Sgrid.map(x => bsm(x,p.K,p.r,p.q,p.sigma,p.tau,'call')[s.key]*s.scale);
+    const gP = Sgrid.map(x => bsm(x,p.K,p.r,p.q,p.sigma,p.tau,'put')[s.key]*s.scale);
+    const cV = bsm(p.S,p.K,p.r,p.q,p.sigma,p.tau,'call')[s.key]*s.scale;
+    const pV = bsm(p.S,p.K,p.r,p.q,p.sigma,p.tau,'put')[s.key]*s.scale;
+    Plotly.react(s.id, [
+      { x:Sgrid, y:gC, mode:'lines', name:'Call', line:{color:COLORS.call, width:2}, hovertemplate:'<b>Call</b> %{y:.4f}<extra></extra>' },
+      { x:Sgrid, y:gP, mode:'lines', name:'Put',  line:{color:COLORS.put,  width:2}, hovertemplate:'<b>Put</b> %{y:.4f}<extra></extra>' },
+      { x:[p.S], y:[cV], mode:'markers', marker:{color:COLORS.call, size:6}, hoverinfo:'skip' },
+      { x:[p.S], y:[pV], mode:'markers', marker:{color:COLORS.put,  size:6}, hoverinfo:'skip' }
+    ], sparkLayout(), config);
+    document.getElementById(s.id+'-c').textContent = fmt(cV, 4);
+    document.getElementById(s.id+'-p').textContent = fmt(pV, 4);
+  });
+
+  /* ---- Time decay ---- */
+  const tauGrid = range(0.01, Math.max(p.tau*2, 2), 60);
+  const tvC = tauGrid.map(t => bsm(p.S,p.K,p.r,p.q,p.sigma,t,'call').price);
+  const tvP = tauGrid.map(t => bsm(p.S,p.K,p.r,p.q,p.sigma,t,'put').price);
+  Plotly.react('chartTime', [
+    { x:tauGrid, y:tvC, mode:'lines', line:{color:COLORS.call, width:2.5}, name:'Call' },
+    { x:tauGrid, y:tvP, mode:'lines', line:{color:COLORS.put,  width:2.5}, name:'Put' },
+    { x:[p.tau,p.tau], y:[0, Math.max(...tvC,...tvP)*1.05], mode:'lines',
+      line:{color:COLORS.accent, width:1, dash:'dash'}, hoverinfo:'skip' }
+  ], baseLayout({ xaxis:{title:'τ (years)'}, yaxis:{title:'Option value'} }), config);
+
+  /* ---- Value vs Vol ---- */
+  const volGrid = range(0.01, 1.5, 80);
+  const vvC = volGrid.map(s => bsm(p.S,p.K,p.r,p.q,s,p.tau,'call').price);
+  const vvP = volGrid.map(s => bsm(p.S,p.K,p.r,p.q,s,p.tau,'put').price);
+  Plotly.react('chartVol', [
+    { x:volGrid.map(v=>v*100), y:vvC, mode:'lines', line:{color:COLORS.call, width:2.5}, name:'Call' },
+    { x:volGrid.map(v=>v*100), y:vvP, mode:'lines', line:{color:COLORS.put,  width:2.5}, name:'Put' },
+    { x:[p.sigma*100,p.sigma*100], y:[0, Math.max(...vvC,...vvP)*1.05], mode:'lines',
+      line:{color:COLORS.accent, width:1, dash:'dash'}, hoverinfo:'skip' }
+  ], baseLayout({ xaxis:{title:'σ (%)'}, yaxis:{title:'Option value'} }), config);
+
+  /* ---- 3D surfaces ---- */
+  const Sgrid3D  = range(Math.max(1, p.S*0.5), p.S*1.6, 30);
+  const volGrid3D = range(0.05, 1.0, 30);
+  const Zcall = volGrid3D.map(s => Sgrid3D.map(spot => bsm(spot,p.K,p.r,p.q,s,p.tau,'call').price));
+  const Zput  = volGrid3D.map(s => Sgrid3D.map(spot => bsm(spot,p.K,p.r,p.q,s,p.tau,'put').price));
+  const surfaceLayout = {
+    paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)',
+    font:{color:COLORS.tx3, size:10},
+    margin:{l:0, r:0, t:0, b:0},
+    scene: {
+      xaxis:{title:'Spot',  gridcolor:COLORS.border1, backgroundcolor:'rgba(0,0,0,0)', color:COLORS.tx3},
+      yaxis:{title:'σ (%)', gridcolor:COLORS.border1, backgroundcolor:'rgba(0,0,0,0)', color:COLORS.tx3},
+      zaxis:{title:'Price', gridcolor:COLORS.border1, backgroundcolor:'rgba(0,0,0,0)', color:COLORS.tx3},
+      camera:{eye:{x:1.6, y:-1.6, z:0.9}}
+    }
+  };
+  Plotly.react('surfCall', [{
+    type:'surface', x:Sgrid3D, y:volGrid3D.map(v=>v*100), z:Zcall,
+    colorscale:[[0,'#0e2a25'],[0.5,'#3a8870'],[1,COLORS.call]],
+    showscale:false, contours:{z:{show:true, usecolormap:true, project:{z:true}}},
+    hovertemplate:'<b>Call</b><br>Spot %{x:.2f}<br>Vol %{y:.2f}%<br>Price %{z:.4f}<extra></extra>'
+  }], surfaceLayout, config);
+  Plotly.react('surfPut', [{
+    type:'surface', x:Sgrid3D, y:volGrid3D.map(v=>v*100), z:Zput,
+    colorscale:[[0,'#2e1820'],[0.5,'#9a4858'],[1,COLORS.put]],
+    showscale:false, contours:{z:{show:true, usecolormap:true, project:{z:true}}},
+    hovertemplate:'<b>Put</b><br>Spot %{x:.2f}<br>Vol %{y:.2f}%<br>Price %{z:.4f}<extra></extra>'
+  }], surfaceLayout, config);
+}
+
+/* ---------- Presets ---------- */
+function loadPreset(name){
+  const presets = {
+    atm:      { S:100, K:100, r:5, q:2, sigma:20, tau:1 },
+    itmCall:  { S:130, K:100, r:5, q:2, sigma:25, tau:0.5 },
+    otmPut:   { S:120, K:90,  r:5, q:1, sigma:30, tau:0.75 },
+    shortExp: { S:100, K:100, r:5, q:0, sigma:25, tau:0.08 },
+    highVol:  { S:100, K:100, r:5, q:0, sigma:80, tau:1 },
+  };
+  const cfg = presets[name]; if(!cfg) return;
+  Object.entries(cfg).forEach(([k,v]) => {
+    state[k] = v;
+    const inp = document.getElementById('rng-'+k);
+    inp.value = v;
+    inp.dispatchEvent(new Event('input'));
+  });
+}
+
+/* ---------- Initial render ---------- */
+render();
+</script>
+
+</body>
+</html>
