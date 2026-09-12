@@ -11,6 +11,18 @@ Repositorio de recursos sobre IA aplicada a finanzas para los miembros del grupo
 | [`/recursos`](./recursos) | El two-pager de la sesión: conectores, cómo crear skills, y una guía de GitHub para no programadores. |
 | [`/instrucciones`](./instrucciones) | Plantilla de instrucciones personalizadas para usar Claude/ChatGPT en tareas de análisis financiero como CFA charterholder. |
 
+## Recursos de la comunidad
+
+Recursos aportados por miembros del grupo que viven en su propio repositorio. Se enlazan desde aquí para que las mejoras lleguen solas y no queden copias desincronizadas.
+
+### Calculadora Black-Scholes-Merton
+
+Explicador interactivo de valuación de opciones europeas y sus griegas de primer y segundo orden, con todo recalculándose en vivo al mover los parámetros de mercado.
+
+- Demo: https://eeramos.github.io/bsm-calculator/
+- Código: https://github.com/EERamos/bsm-calculator
+- Autor: Eduardo Ramos, CFA. Licencia MIT.
+
 ## ¿Por dónde empezar?
 
 1. Lee el PDF en [`/recursos`](./recursos/AI-for-Finance-Recursos-CFA.pdf) — cubre el contexto completo de la sesión.
