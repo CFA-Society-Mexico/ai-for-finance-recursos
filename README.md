@@ -41,8 +41,8 @@ Repositorio de recursos sobre IA aplicada a finanzas para los miembros del grupo
 ## Uso de IA / AI use
 
 - Herramientas / Tools: Claude; Claude Code
-- Para qué / What for: redacción y diseño del PDF (Claude); actualización de este README a la organización de GitHub (Claude Code)
-- Revisión humana / Human review: Edgar Calderon, CFA revisó el PDF en varias rondas y los cambios a este README
+- Para qué / What for: redacción y diseño del PDF y de la plantilla de instrucciones (Claude); actualización de este README a la organización de GitHub (Claude Code)
+- Revisión humana / Human review: Edgar Calderon, CFA revisó el PDF en varias rondas y los cambios a este README; la plantilla de instrucciones la revisó el grupo de práctica
 
 ## Cómo contribuir
 
